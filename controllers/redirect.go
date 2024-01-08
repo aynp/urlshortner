@@ -27,9 +27,10 @@ func Redirect(c *gin.Context) {
 	}
 
 	redirectURL, err := url.Parse(targetURL.Val())
+  redirectURLQuery := redirectURL.Query()
 
 	// Add URL Params
-	err = addUrlParams(c, path, redirectURL)
+	err = addUrlParams(c, path, &redirectURLQuery)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -37,7 +38,7 @@ func Redirect(c *gin.Context) {
 	}
 
 	// Add Header Params
-	err = addHeaderParams(c, path, redirectURL)
+	err = addHeaderParams(c, path, &redirectURLQuery)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -45,12 +46,14 @@ func Redirect(c *gin.Context) {
 	}
 
 	// Add Auto Generated params
-	err = addAutoGenParams(c, path, redirectURL)
+	err = addAutoGenParams(c, path, &redirectURLQuery)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
 	}
+
+  redirectURL.RawQuery = redirectURLQuery.Encode()
 
 	// Redirect
 	c.Redirect(http.StatusPermanentRedirect, redirectURL.String())
@@ -58,7 +61,7 @@ func Redirect(c *gin.Context) {
 
 // addUrlParams adds URL params to the redirect URL as set in DB
 // It returns an error if a mandatory param is not present in the request
-func addUrlParams(c *gin.Context, path string, redirectURL *url.URL) error {
+func addUrlParams(c *gin.Context, path string, redirectURLQuery *url.Values) error {
 	// Add URL Params
 	urlParam := db.Redis.SMembers(context.Background(), fmt.Sprintf("%s:URLParams", path))
 
@@ -80,7 +83,7 @@ func addUrlParams(c *gin.Context, path string, redirectURL *url.URL) error {
 		}
 
 		if urlValue != "" {
-			redirectURL.Query().Add(unmarshalledURLParams.TargetParam, urlValue)
+			redirectURLQuery.Set(unmarshalledURLParams.TargetParam, urlValue)
 		}
 	}
 
@@ -89,7 +92,7 @@ func addUrlParams(c *gin.Context, path string, redirectURL *url.URL) error {
 
 // addHeaderParams adds header params to the redirect URL as set in DB
 // It returns an error if a mandatory param is not present in the request
-func addHeaderParams(c *gin.Context, path string, redirectURL *url.URL) error {
+func addHeaderParams(c *gin.Context, path string, redirectURLQuery *url.Values) error {
 	headerParam := db.Redis.SMembers(context.Background(), fmt.Sprintf("%s:HeaderParams", path))
 
 	if headerParam.Err() != nil {
@@ -111,7 +114,7 @@ func addHeaderParams(c *gin.Context, path string, redirectURL *url.URL) error {
 		}
 
 		if headerValue != "" {
-			redirectURL.Query().Add(unmarshalledHeaderParams.TargetParam, headerValue)
+			redirectURLQuery.Set(unmarshalledHeaderParams.TargetParam, headerValue)
 		}
 	}
 
@@ -119,7 +122,7 @@ func addHeaderParams(c *gin.Context, path string, redirectURL *url.URL) error {
 }
 
 // addAutoGenParams adds either timestamp or uuid to the redirect URL
-func addAutoGenParams(c *gin.Context, path string, redirectURL *url.URL) error {
+func addAutoGenParams(c *gin.Context, path string, redirectURLQuery *url.Values) error {
 	autoGenParam := db.Redis.SMembers(context.Background(), fmt.Sprintf("%s:AutoGenParams", path))
 
 	if autoGenParam.Err() != nil {
@@ -134,11 +137,11 @@ func addAutoGenParams(c *gin.Context, path string, redirectURL *url.URL) error {
 		}
 
 		if unmarshalledAutoGenParams.Type == "timestamp" {
-			redirectURL.Query().Add(unmarshalledAutoGenParams.TargetKey, utils.TimestampString())
+			redirectURLQuery.Set(unmarshalledAutoGenParams.TargetKey, utils.TimestampString())
 		}
 
 		if unmarshalledAutoGenParams.Type == "uuid" {
-			redirectURL.Query().Add(unmarshalledAutoGenParams.TargetKey, utils.UUIDString())
+			redirectURLQuery.Set(unmarshalledAutoGenParams.TargetKey, utils.UUIDString())
 		}
 	}
 
