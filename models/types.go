@@ -6,7 +6,7 @@ type CreateRequest struct {
 	OriginalURL   string         `json:"original_url"`
 	URLParams     []URLParam     `json:"url_params"`
 	HeaderParams  []HeaderParam  `json:"header_params"`
-	AutoGenParams []AutoGenParam `json:"auto_generated_params"`
+	AutoGenParams []AutoGenParam `json:"auto_gen_params"`
 }
 
 type URLParam struct {
